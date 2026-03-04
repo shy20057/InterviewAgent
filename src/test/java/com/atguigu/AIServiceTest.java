@@ -1,6 +1,5 @@
 package com.atguigu;
 
-import com.atguigu.assistant.Assistant;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
