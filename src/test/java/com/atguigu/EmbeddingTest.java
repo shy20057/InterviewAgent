@@ -19,6 +19,8 @@ import java.util.List;
 public class EmbeddingTest {
     @Autowired
     private EmbeddingModel embeddingModel;
+    @Autowired
+    private EmbeddingStore embeddingStore;
 
     @Test
     public void testEmbeddingModel() {
@@ -27,8 +29,7 @@ public class EmbeddingTest {
         System.out.println("向量输出：" + embed.toString());
     }
 
-    @Autowired
-    private EmbeddingStore embeddingStore;
+
 
     /**
      * 将文本转换成向量，然后存储到pinecone中
@@ -78,6 +79,10 @@ public class EmbeddingTest {
         System.out.println(embeddingMatch.embedded().text());
     }
 
+
+    /*
+    *  上传文档
+    * */
     @Test
     public void testUploadKnowledgeLibrary() {
 //使用FileSystemDocumentLoader读取指定目录下的知识库文档

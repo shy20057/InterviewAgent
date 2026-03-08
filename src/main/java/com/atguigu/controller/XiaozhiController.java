@@ -11,17 +11,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
-@Tag(name = "硅谷小智")
+@Tag(name = "AI面试官")
 @RestController
 @RequestMapping("/xiaozhi")
 public class XiaozhiController {
 
-  @Autowired
+    @Autowired
     private  XiaoZhiAgent xiaoZhiAgent;
 
-
-   @Operation(summary = "对话")
-   @PostMapping(value="/chat", produces = "text/event-stream;charset=utf-8")
+    @Operation(summary = "对话")
+    @PostMapping(value="/chat", produces = "text/stream;charset=utf-8")
     public Flux<String> chat(@RequestBody ChatForm chatForm){
         return xiaoZhiAgent.chat(chatForm.getMemoryId(),chatForm.getMessage());
     }
