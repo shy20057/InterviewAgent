@@ -12,7 +12,7 @@ public class CalculatorTools {
     double sum(
             @ToolMemoryId int memoryId,
             @P(value = "a", required = true) double a,
-            @P(value = "a", required = true) double b) {
+            @P(value = "b", required = true) double b) {
         System.out.println("调用加法运算 memoryId:"+memoryId);
         return a + b;
     }

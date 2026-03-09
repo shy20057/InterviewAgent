@@ -1,6 +1,6 @@
 package com.atguigu.loader;
 
-import com.atguigu.config.PineconeEmbeddingStoreConfig;
+import com.atguigu.retriever.EmbeddingStoreProvider;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
@@ -33,13 +33,21 @@ public class QuestionDataLoader {
     private EmbeddingModel embeddingModel;
 
     @Autowired
-    private PineconeEmbeddingStoreConfig pineconeEmbeddingStoreConfig;
+    private EmbeddingStoreProvider embeddingStoreProvider;
 
     @Value("${interview.questions.path:src/main/resources/content}")
     private String questionsPath;
 
+    @Value("${interview.questions.auto-load:false}")
+    private boolean autoLoad;
+
     @PostConstruct
     public void initOfficialQuestions() {
+        if (!autoLoad) {
+            log.info("题库自动加载已关闭（interview.questions.auto-load=false），如需加载题库请设置为 true");
+            return;
+        }
+
         log.info("开始初始化官方题库...");
         
         try {
@@ -98,7 +106,7 @@ public class QuestionDataLoader {
                 return;
             }
 
-            EmbeddingStore<TextSegment> storeForNamespace = pineconeEmbeddingStoreConfig.getStoreByNamespace(namespace);
+            EmbeddingStore<TextSegment> storeForNamespace = embeddingStoreProvider.getStoreByNamespace(namespace);
 
             File[] files = path.toFile().listFiles((dir, name) -> name.endsWith(".pdf"));
             if (files == null || files.length == 0) {

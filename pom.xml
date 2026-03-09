@@ -44,6 +44,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
 
         </dependency>
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
         <!-- 编写和运行测试用例 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -129,6 +135,12 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-pinecone</artifactId>
+        </dependency>
+
+        <!--chromadb-->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-chroma</artifactId>
         </dependency>
 
         <!--流式输出-->

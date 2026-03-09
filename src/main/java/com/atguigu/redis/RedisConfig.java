@@ -1,6 +1,5 @@
 package com.atguigu.redis;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,8 +8,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
 @Configuration
-@Slf4j
-public class RedisConfig<V> {
+public class RedisConfig {
 
     @Value("${spring.data.redis.host:}")
     private String redisHost;
@@ -24,8 +22,8 @@ public class RedisConfig<V> {
 
 
     @Bean("redisTemplate")    // 创建Redis连接工厂
-    public RedisTemplate<String, V> redisTemplate(RedisConnectionFactory factory) {
-        RedisTemplate<String, V> template = new RedisTemplate<>(); // 创建RedisTemplate对象 redis模板对象 简化Redis操作 封装 序列化 连接管理
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>(); // 创建RedisTemplate对象 redis模板对象 简化Redis操作 封装 序列化 连接管理
         template.setConnectionFactory(factory); // 设置Redis连接工厂 自动管理Redis连接的获取与释放
         // 设置key的序列化方式 将键序列化为字符串格式
         template.setKeySerializer(RedisSerializer.string());

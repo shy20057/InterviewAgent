@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
 Test set: com.atguigu.RAGTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 1.722 s <<< FAILURE! -- in com.atguigu.RAGTest
-com.atguigu.RAGTest.testReadDocument -- Time elapsed: 0.030 s <<< ERROR!
+Tests run: 5, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 1.747 s <<< FAILURE! -- in com.atguigu.RAGTest
+com.atguigu.RAGTest.testReadDocument -- Time elapsed: 0.031 s <<< ERROR!
 java.lang.IllegalArgumentException: 'E:\knowledge\file.txt' is not a file
 	at dev.langchain4j.internal.Exceptions.illegalArgument(Exceptions.java:19)
 	at dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument(FileSystemDocumentLoader.java:50)

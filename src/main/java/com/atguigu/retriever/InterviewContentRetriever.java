@@ -1,34 +1,31 @@
 package com.atguigu.retriever;
 
-import com.atguigu.config.PineconeEmbeddingStoreConfig;
-import dev.langchain4j.data.content.Content;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.Embedding;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
-public class InterviewContentRetriever implements ContentRetriever {
+public class InterviewContentRetriever {
 
     @Autowired
     private EmbeddingModel embeddingModel;
 
     @Autowired
-    private PineconeEmbeddingStoreConfig pineconeEmbeddingStoreConfig;
+    private EmbeddingStoreProvider embeddingStoreProvider;
+
 
     public List<Content> retrieveForInterview(
             String query,
@@ -43,15 +40,12 @@ public class InterviewContentRetriever implements ContentRetriever {
 
             EmbeddingStore<TextSegment> officialStore = getStoreByNamespace(officialNamespace);
 
-            Map<String, Object> metadataFilter = new HashMap<>();
-            metadataFilter.put("difficulty", difficulty);
-            metadataFilter.put("type", "official");
-
             EmbeddingSearchRequest officialRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(queryEmbedding)
                     .maxResults(5)
                     .minScore(0.7)
-                    .filter(metadataFilter)
+                    .filter(MetadataFilterBuilder.metadataKey("difficulty").isEqualTo(difficulty)
+                            .and(MetadataFilterBuilder.metadataKey("type").isEqualTo("official")))
                     .build();
 
             EmbeddingSearchResult<TextSegment> officialResult = officialStore.search(officialRequest);
@@ -108,11 +102,8 @@ public class InterviewContentRetriever implements ContentRetriever {
     }
 
     private EmbeddingStore<TextSegment> getStoreByNamespace(String namespace) {
-        return pineconeEmbeddingStoreConfig.getStoreByNamespace(namespace);
+        return embeddingStoreProvider.getStoreByNamespace(namespace);
     }
 
-    @Override
-    public List<Content> retrieve(Query query) {
-        return retrieveForInterview(query.text(), "java-backend", "medium", null);
-    }
+
 }
