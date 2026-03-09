@@ -15,20 +15,26 @@ public class PineconeEmbeddingStoreConfig {
     @Autowired
     private EmbeddingModel embeddingModel;
 
-    @Bean
-    public EmbeddingStore<TextSegment> embeddingStore() {
-        //创建向量存储
+    @Bean("interviewEmbeddingStore")
+    public EmbeddingStore<TextSegment> interviewEmbeddingStore() {
         EmbeddingStore<TextSegment> embeddingStore = PineconeEmbeddingStore.builder()
                 .apiKey(System.getenv("PINECONE_API_KEY"))
-                .index("xiaozhi-index")
-                .nameSpace("xiaozhi-namespace")
+                .index("interview-assistant-index")
+                .nameSpace("default")
                 .createIndex(PineconeServerlessIndexConfig.builder()
-                                .cloud("AWS") //指定索引部署在 AWS 云服务上。
-                                .region("us-east-1") //指定索引所在的 AWS 区域为 us-east-1。
-                                .dimension(embeddingModel.dimension()) //指定索引的向量维度
+                                .cloud("AWS")
+                                .region("us-east-1")
+                                .dimension(embeddingModel.dimension())
                                 .build())
                 .build();
-
         return embeddingStore;
+    }
+
+    public EmbeddingStore<TextSegment> getStoreByNamespace(String namespace) {
+        return PineconeEmbeddingStore.builder()
+                .apiKey(System.getenv("PINECONE_API_KEY"))
+                .index("interview-assistant-index")
+                .nameSpace(namespace)
+                .build();
     }
 }
