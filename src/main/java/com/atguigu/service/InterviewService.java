@@ -1,14 +1,26 @@
 package com.atguigu.service;
 
 import com.atguigu.assistant.InterviewAgent;
+<<<<<<< HEAD
+import com.atguigu.entity.dto.StartInterviewDTO;
+import com.atguigu.entity.dto.SubmitAnswerRequestDTO;
+import com.atguigu.entity.po.InterviewQuestion;
+import com.atguigu.entity.po.InterviewSession;
+import com.atguigu.entity.po.UserResume;
+=======
 import com.atguigu.retriever.EmbeddingStoreProvider;
 import com.atguigu.entity.InterviewQuestion;
 import com.atguigu.entity.InterviewSession;
 import com.atguigu.entity.UserResume;
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
 import com.atguigu.entity.vo.*;
 import com.atguigu.mapper.InterviewQuestionMapper;
 import com.atguigu.mapper.InterviewSessionMapper;
 import com.atguigu.mapper.UserResumeMapper;
+<<<<<<< HEAD
+import com.atguigu.retriever.EmbeddingStoreProvider;
+=======
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
 import com.atguigu.retriever.InterviewContentRetriever;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -71,15 +83,25 @@ public class InterviewService {
      * 开始面试 - 创建面试会话并持久化
      */
     @Transactional(rollbackFor = Exception.class)
+<<<<<<< HEAD
+    public InterviewSessionVO startInterview(StartInterviewDTO startInterviewDTO) {
+=======
     public InterviewSessionVO startInterview(StartInterviewRequest request) {
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         String sessionId = UUID.randomUUID().toString();
 
         // 创建面试会话实体
         InterviewSession session = new InterviewSession();
         session.setSessionId(sessionId);
+<<<<<<< HEAD
+        session.setUserId(startInterviewDTO.getUserId() != null ? startInterviewDTO.getUserId() : "default");
+        session.setPosition(startInterviewDTO.getPosition() != null ? startInterviewDTO.getPosition() : "java-backend");
+        session.setDifficulty(startInterviewDTO.getDifficulty() != null ? startInterviewDTO.getDifficulty() : "medium");
+=======
         session.setUserId(request.getUserId() != null ? request.getUserId() : "default");
         session.setPosition(request.getPosition() != null ? request.getPosition() : "java-backend");
         session.setDifficulty(request.getDifficulty() != null ? request.getDifficulty() : "medium");
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         session.setStatus("ongoing");
         session.setTotalQuestions(0);
         session.setAnsweredCount(0);
@@ -98,7 +120,11 @@ public class InterviewService {
                 .difficulty(session.getDifficulty())
                 .status("ongoing")
                 .startTime(session.getStartTime().toString())
+<<<<<<< HEAD
+                .message("面试已开始，请准备好回答问题！")
+=======
                 .message("面试已开始，请准备好回答问题！😊")
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
                 .build();
     }
 
@@ -120,8 +146,14 @@ public class InterviewService {
         String question;
         if (nextQuestionNumber == 1) {
             question = "你好！我是你的面试官，请简单介绍一下你自己，并说说你对"
+<<<<<<< HEAD
+                    + getPositionName(session.getPosition()) + "岗位的理解？";
+        } else {
+            // TODO 查询知识库提问
+=======
                     + getPositionName(session.getPosition()) + "岗位的理解？😊";
         } else {
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
             question = "请继续回答下一个问题（由AI面试官根据你的表现动态生成）";
         }
 
@@ -138,20 +170,34 @@ public class InterviewService {
      * 提交答案并获取AI反馈（流式）
      */
     @Transactional(rollbackFor = Exception.class)
+<<<<<<< HEAD
+    public Flux<String> submitAnswer(SubmitAnswerRequestDTO submitAnswerRequestDTO) {
+        InterviewSession session = getSession(submitAnswerRequestDTO.getSessionId());
+=======
     public Flux<String> submitAnswer(SubmitAnswerRequest request) {
         InterviewSession session = getSession(request.getSessionId());
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         if (session == null) {
             return Flux.just("会话不存在，请先调用 /api/interview/start 开始面试");
         }
 
         String position = session.getPosition();
         String difficulty = session.getDifficulty();
+<<<<<<< HEAD
+        String userSkills = session.getUserId(); 
+        //TODO 后续可从简历中提取
+=======
         String userSkills = session.getUserId(); // 后续可从简历中提取
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
 
         // ================= 显式 (Manual) RAG 检索 =====================
         // 这一步代替了原来的 ThreadLocal 上下文传递，彻底解决了 WebFlux 异步切线程导致的空指针。
         java.util.List<dev.langchain4j.rag.content.Content> retrievedContentsList = 
+<<<<<<< HEAD
+                contentRetriever.retrieveForInterview(submitAnswerRequestDTO.getAnswer(), position, difficulty, session.getUserId());
+=======
                 contentRetriever.retrieveForInterview(request.getAnswer(), position, difficulty, session.getUserId());
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         
         String retrievedContents = retrievedContentsList.stream()
                 .map(dev.langchain4j.rag.content.Content::textSegment)
@@ -159,6 +205,20 @@ public class InterviewService {
                 .collect(java.util.stream.Collectors.joining("\n---\n"));
         // ==============================================================
 
+<<<<<<< HEAD
+        // 记录用户答案到数据库 TODO 用户回答数据库待补全
+        int questionOrder = session.getAnsweredCount() + 1;
+        InterviewQuestion questionRecord = new InterviewQuestion();
+        questionRecord.setSessionId(submitAnswerRequestDTO.getSessionId());
+        questionRecord.setQuestionOrder(questionOrder);
+//        questionRecord.setQuestionText(getQuestion(submitAnswerRequestDTO.getSessionId()).getQuestion());
+//        questionRecord.setCategory(getPositionName(position));
+        questionRecord.setDifficulty(difficulty);
+        questionRecord.setUserAnswer(submitAnswerRequestDTO.getAnswer());
+//        questionRecord.setAiFeedback("");
+//        questionRecord.setScore(0);
+        questionRecord.setAnswerTime(LocalDateTime.now());
+=======
         // 记录用户答案到数据库
         int questionOrder = session.getAnsweredCount() + 1;
         InterviewQuestion questionRecord = new InterviewQuestion();
@@ -167,6 +227,7 @@ public class InterviewService {
         questionRecord.setUserAnswer(request.getAnswer());
         questionRecord.setAnswerTime(LocalDateTime.now());
         questionRecord.setDifficulty(difficulty);
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         questionMapper.insert(questionRecord);
 
         // 更新会话的已答题数
@@ -179,8 +240,13 @@ public class InterviewService {
 
         // 调用AI面试Agent (携带检索到的内容)
         return interviewAgent.interview(
+<<<<<<< HEAD
+                submitAnswerRequestDTO.getSessionId(),
+                submitAnswerRequestDTO.getAnswer(),
+=======
                 request.getSessionId(),
                 request.getAnswer(),
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
                 position,
                 difficulty,
                 currentQuestion,
@@ -257,7 +323,11 @@ public class InterviewService {
      * 获取面试评估结果
      */
     public InterviewResultVO getResult(String sessionId) {
+<<<<<<< HEAD
+        InterviewSession session = sessionMapper.selectById(sessionId);
+=======
         InterviewSession session = getSession(sessionId);
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         if (session == null) {
             return InterviewResultVO.builder()
                     .sessionId(sessionId)

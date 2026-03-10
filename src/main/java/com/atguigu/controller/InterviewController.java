@@ -1,5 +1,10 @@
 package com.atguigu.controller;
 
+<<<<<<< HEAD
+import com.atguigu.entity.dto.StartInterviewDTO;
+import com.atguigu.entity.dto.SubmitAnswerRequestDTO;
+=======
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
 import com.atguigu.entity.vo.*;
 import com.atguigu.service.InterviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,8 +27,13 @@ public class InterviewController {
      */
     @Operation(summary = "开始面试")
     @PostMapping("/start")
+<<<<<<< HEAD
+    public ResponseEntity<InterviewSessionVO> startInterview(@RequestBody StartInterviewDTO startInterviewDTO) {
+        InterviewSessionVO session = interviewService.startInterview(startInterviewDTO);
+=======
     public ResponseEntity<InterviewSessionVO> startInterview(@RequestBody StartInterviewRequest request) {
         InterviewSessionVO session = interviewService.startInterview(request);
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         return ResponseEntity.ok(session);
     }
 
@@ -32,7 +42,11 @@ public class InterviewController {
      */
     @Operation(summary = "获取面试问题")
     @GetMapping("/question")
+<<<<<<< HEAD
+    public ResponseEntity<QuestionVO> getQuestion(@RequestParam("sessionId") String sessionId) {
+=======
     public ResponseEntity<QuestionVO> getQuestion(@RequestParam String sessionId) {
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         QuestionVO question = interviewService.getQuestion(sessionId);
         return ResponseEntity.ok(question);
     }
@@ -42,8 +56,13 @@ public class InterviewController {
      */
     @Operation(summary = "提交答案")
     @PostMapping(value = "/answer", produces = "text/event-stream;charset=utf-8")
+<<<<<<< HEAD
+    public Flux<String> submitAnswer(@RequestBody SubmitAnswerRequestDTO submitAnswerRequestDTO) {
+        return interviewService.submitAnswer(submitAnswerRequestDTO);
+=======
     public Flux<String> submitAnswer(@RequestBody SubmitAnswerRequest request) {
         return interviewService.submitAnswer(request);
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
     }
 
     /**
@@ -51,7 +70,11 @@ public class InterviewController {
      */
     @Operation(summary = "获取面试结果")
     @GetMapping("/result/{sessionId}")
+<<<<<<< HEAD
+    public ResponseEntity<InterviewResultVO> getResult(@PathVariable("sessionId") String sessionId) {
+=======
     public ResponseEntity<InterviewResultVO> getResult(@PathVariable String sessionId) {
+>>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
         InterviewResultVO result = interviewService.getResult(sessionId);
         return ResponseEntity.ok(result);
     }
