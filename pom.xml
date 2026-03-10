@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -38,11 +38,10 @@
         <redisson.version>3.23.4</redisson.version>
     </properties>
     <dependencies>
-        <!-- web应用程序核心依赖 -->
+        <!-- web 应用程序核心依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-
         </dependency>
         <!-- Lombok -->
         <dependency>
@@ -68,13 +67,13 @@
             <artifactId>langchain4j-spring-boot-starter</artifactId>
         </dependency>
 
-        <!--基于open-ai的langchain4j接口-->
+        <!--基于 open-ai 的 langchain4j 接口-->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
         </dependency>
 
-        <!--接入本地部署的ollama-->
+        <!--接入本地部署的 ollama-->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama-spring-boot-starter</artifactId>
@@ -109,7 +108,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
-            <version>${spring-boot.version}</version>
         </dependency>
 
         <!-- Redisson 它提供了许多分布式和并发编程的解决方案 实现集群环境发送信息 连接不同的服务器 而实现信息在所有客户端中传输-->
@@ -119,13 +117,13 @@
             <version>${redisson.version}</version>
         </dependency>
 
-        <!--解析pdf文档-->
+        <!--解析 pdf 文档-->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
         </dependency>
 
-        <!--简单的rag实现-->
+        <!--简单的 rag 实现-->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-easy-rag</artifactId>
@@ -158,7 +156,7 @@
 
     <dependencyManagement>
         <dependencies>
-            <!--引入SpringBoot依赖管理清单-->
+            <!--引入 SpringBoot 依赖管理清单-->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -167,7 +165,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!--langchain4j的依赖管理清单 以后都不用些版本号了-->
+            <!--langchain4j 的依赖管理清单 以后都不用些版本号了-->
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-bom</artifactId>
@@ -192,7 +190,6 @@
     <build>
         <plugins>
             <plugin>
-<<<<<<< HEAD
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
@@ -200,10 +197,16 @@
                 </configuration>
             </plugin>
             <plugin>
-=======
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
             </plugin>
         </plugins>
     </build>

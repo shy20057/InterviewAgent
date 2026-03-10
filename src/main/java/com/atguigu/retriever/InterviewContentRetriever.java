@@ -26,20 +26,13 @@ public class InterviewContentRetriever {
     @Autowired
     private EmbeddingStoreProvider embeddingStoreProvider;
 
-<<<<<<< HEAD
     public List<Content> retrieveForInterview(
             String answer,
-=======
-
-    public List<Content> retrieveForInterview(
-            String query,
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
             String position,
             String difficulty,
             String userId) {
 
         try {
-<<<<<<< HEAD
 
             // ===================1.根据用户的答案检索的知识点==========================//
             Embedding answerEmbedding = embeddingModel.embed(answer).content();
@@ -54,24 +47,11 @@ public class InterviewContentRetriever {
                     .queryEmbedding(answerEmbedding)
                     .maxResults(5)
                     .minScore(0.7) // TODO 优化大模型从向量数据库中按难度/岗位选题
-=======
-            Embedding queryEmbedding = embeddingModel.embed(query).content();
-
-            String officialNamespace = getNamespaceByPosition(position);
-
-            EmbeddingStore<TextSegment> officialStore = getStoreByNamespace(officialNamespace);
-
-            EmbeddingSearchRequest officialRequest = EmbeddingSearchRequest.builder()
-                    .queryEmbedding(queryEmbedding)
-                    .maxResults(5)
-                    .minScore(0.7)
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
                     .filter(MetadataFilterBuilder.metadataKey("difficulty").isEqualTo(difficulty)
                             .and(MetadataFilterBuilder.metadataKey("type").isEqualTo("official")))
                     .build();
 
             EmbeddingSearchResult<TextSegment> officialResult = officialStore.search(officialRequest);
-<<<<<<< HEAD
             // matches()获取 对象EmbeddingMatch 中有
             // -embedded()：匹配到的原始文字 -score()：相似度得分 -embeddingId()：该数据在数据库里的 ID
             List<EmbeddingMatch<TextSegment>> officialMatches = officialResult.matches();
@@ -86,47 +66,22 @@ public class InterviewContentRetriever {
                 EmbeddingSearchRequest resumeRequest = EmbeddingSearchRequest.builder()
                         .queryEmbedding(answerEmbedding)
                         .maxResults(3) // 最多拿 3 条简历经历
-=======
-            List<EmbeddingMatch<TextSegment>> officialMatches = officialResult.matches();
-
-            List<EmbeddingMatch<TextSegment>> resumeMatches = new ArrayList<>();
-            if (userId != null && !userId.isEmpty()) {
-                EmbeddingStore<TextSegment> resumeStore = getStoreByNamespace("user-resume-" + userId);
-
-                EmbeddingSearchRequest resumeRequest = EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .maxResults(3)
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
                         .minScore(0.6)
                         .build();
 
                 EmbeddingSearchResult<TextSegment> resumeResult = resumeStore.search(resumeRequest);
                 resumeMatches = resumeResult.matches();
             }
-<<<<<<< HEAD
-=======
-
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
             List<Content> contents = new ArrayList<>();
 
             for (EmbeddingMatch<TextSegment> match : officialMatches) {
                 contents.add(Content.from(
-<<<<<<< HEAD
                         "[知识点] " + match.embedded().text()));
-=======
-                    "[知识点] " + match.embedded().text()
-                ));
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
             }
 
             for (EmbeddingMatch<TextSegment> match : resumeMatches) {
                 contents.add(Content.from(
-<<<<<<< HEAD
                         "[简历相关] " + match.embedded().text()));
-=======
-                    "[简历相关] " + match.embedded().text()
-                ));
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
             }
 
             log.info("检索完成：官方题库 {} 条，用户简历 {} 条", officialMatches.size(), resumeMatches.size());
@@ -151,12 +106,4 @@ public class InterviewContentRetriever {
         }
     }
 
-<<<<<<< HEAD
-=======
-    private EmbeddingStore<TextSegment> getStoreByNamespace(String namespace) {
-        return embeddingStoreProvider.getStoreByNamespace(namespace);
-    }
-
-
->>>>>>> 937f045ba68541c536ea36d8d25054ac5e48a0c0
 }
