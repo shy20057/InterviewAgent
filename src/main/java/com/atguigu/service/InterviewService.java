@@ -7,7 +7,6 @@ import com.atguigu.entity.dto.SubmitAnswerRequestDTO;
 import com.atguigu.entity.po.InterviewQuestion;
 import com.atguigu.entity.po.InterviewSession;
 import com.atguigu.entity.po.UserResume;
-import com.atguigu.entity.vo.InterviewSessionVO;
 import com.atguigu.entity.vo.QuestionVO;
 import com.atguigu.entity.vo.ResumeVO;
 import com.atguigu.mapper.InterviewQuestionMapper;
@@ -45,6 +44,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -90,7 +90,11 @@ public class InterviewService {
      * 开始面试 - 创建面试会话并持久化
      */
     @Transactional(rollbackFor = Exception.class)
-    public InterviewSessionVO startInterview(StartInterviewDTO startInterviewDTO) {
+    public Flux<String> startInterview(StartInterviewDTO startInterviewDTO) {
+        if(startInterviewDTO.getUserId() == null){
+            return Flux.error(new RuntimeException("请先注册"));
+        }
+
         String sessionId = UUID.randomUUID().toString();
 
         // 创建面试会话实体
@@ -99,6 +103,7 @@ public class InterviewService {
         session.setUserId(startInterviewDTO.getUserId() != null ? startInterviewDTO.getUserId() : "default");
         session.setPosition(startInterviewDTO.getPosition() != null ? startInterviewDTO.getPosition() : "java-backend");
         session.setDifficulty(startInterviewDTO.getDifficulty() != null ? startInterviewDTO.getDifficulty() : "medium");
+        session.setSkills(startInterviewDTO.getUserSkills() != null ? startInterviewDTO.getUserSkills() : "");
         session.setStatus("ongoing");
         session.setTotalQuestions(0);
         session.setAnsweredCount(0);
@@ -106,19 +111,42 @@ public class InterviewService {
         session.setStartTime(LocalDateTime.now());
 
         // 持久化到数据库
-        sessionMapper.insert(session);
+        sessionMapper.insertOrUpdate(session);
         log.info("面试会话已创建: sessionId={}, position={}, difficulty={}",
                 sessionId, session.getPosition(), session.getDifficulty());
 
-        return InterviewSessionVO.builder()
-                .sessionId(sessionId)
-                .userId(session.getUserId())
-                .position(session.getPosition())
-                .difficulty(session.getDifficulty())
-                .status("ongoing")
-                .startTime(session.getStartTime().toString())
-                .message("面试已开始，请准备好回答问题！")
-                .build();
+        UserResume userResume = resumeMapper.selectOne(new LambdaQueryWrapper<UserResume>()
+                .eq(UserResume::getUserId, startInterviewDTO.getUserId()));
+
+        String position = userResume.getPosition();
+        List<String> skillsList = Arrays.asList(userResume.getSkills().split(","));
+        String projectExperience = userResume.getProjectExperience();
+
+        if(userResume == null){
+            position = startInterviewDTO.getPosition();
+            skillsList = Arrays.asList(startInterviewDTO.getUserSkills().split(","));
+            projectExperience = "";
+        }
+
+        // 根据用户岗位 技术栈检索知识库 获取题库
+        List<Content> retrievedContentsList = contentRetriever
+                .retrieve4InitQuestion(position, skillsList, projectExperience, startInterviewDTO.getDifficulty(), session.getUserId());
+
+        String retrievedContents = retrievedContentsList.stream()
+                .map(Content::textSegment)
+                .map(TextSegment::text)
+                .collect(Collectors.joining("\n---\n"));
+
+
+        return interviewAgent.interview(
+                sessionId,
+                "你好",
+                position,
+                skillsList.stream().map(skill -> "\"" + skill + "\"").collect(Collectors.joining(",")),
+                projectExperience,
+                startInterviewDTO.getDifficulty(),
+                retrievedContents
+        );
     }
 
     /**
@@ -163,14 +191,11 @@ public class InterviewService {
             return Flux.just("会话不存在，请先调用 /api/interview/start 开始面试");
         }
 
-        String position = session.getPosition();
-        String difficulty = session.getDifficulty();
-        String userSkills = session.getUserId();
-        // TODO 后续可从简历中提取
 
         // ================= RAG 检索 ====================
+        // 根据用户的回答检索知识库
        List<Content> retrievedContentsList = contentRetriever
-                .retrieveForInterview(submitAnswerRequestDTO.getAnswer(), position, difficulty, session.getUserId());
+                .retrieve4Answer(submitAnswerRequestDTO.getAnswer(),session.getUserId());
 
         // 提取片段中的纯文本，并进行拼接
         String retrievedContents = retrievedContentsList.stream()
@@ -196,7 +221,7 @@ public class InterviewService {
                 submitAnswerRequestDTO.getAnswer(),
                 position,
                 difficulty,
-                userSkills != null ? userSkills : "Java, Spring, MySQL",
+                skills != null ? skills : "Java, Spring, MySQL",
                 retrievedContents,
                 resumeContent
         );
@@ -309,6 +334,7 @@ public class InterviewService {
                 document = Document.from(fullText);
             } else if (originalFilename.endsWith(".jpg") || originalFilename.endsWith(".jpeg")
                     || originalFilename.endsWith(".png")) {
+                // TODO 图片处理
                 System.out.println("图片ocr待做");
             } else {
                 throw new IllegalArgumentException("不支持的文件格式，请上传 PDF、Word 文档或图片文件");
@@ -319,16 +345,49 @@ public class InterviewService {
 
         // 3. 利用 AI 提取技能和年限
         String aiJson = interviewAgent.extractSkills(fullText);
+
+        // ==================== JSON 解析和信息提取 ====================
         String skills = "未识别到核心技能";
-        Integer experienceYears = 0;
+        String position = "official-java-backend";
+        String projectExperience = "暂无相关项目经验";
+
         try {
             ObjectMapper mapper = new ObjectMapper();
-            JsonNode node = mapper.readTree(aiJson);
-            skills = node.path("skills").asText(skills);
-            experienceYears = node.path("experienceYears").asInt(0);
+
+            // 步骤 1：将 JSON 字符串解析为 JsonNode 对象
+            // aiJson 示例：{"skills": "java-basic, springboot, mysql, redis", "position": "official-java-backend", "projectExperience": "..."}
+            JsonNode jsonNode = mapper.readTree(aiJson);
+
+            // 步骤 2：分别提取三个字段的信息
+
+            // ① 提取 skills（技术栈）
+            if (jsonNode.has("skills") && !jsonNode.get("skills").isMissingNode()) {
+                skills = jsonNode.get("skills").asText();
+                // skills = "java-basic, springboot, mysql, redis"
+            }
+
+            // ② 提取 position（岗位）
+            if (jsonNode.has("position") && !jsonNode.get("position").isMissingNode()) {
+                position = jsonNode.get("position").asText();
+                // position = "official-java-backend"
+            }
+
+            // ③ 提取 projectExperience（项目经历）
+            if (jsonNode.has("projectExperience") && !jsonNode.get("projectExperience").isMissingNode()) {
+                projectExperience = jsonNode.get("projectExperience").asText();
+                // projectExperience = "3 年电商系统开发经验，负责后端架构设计和性能优化..."
+            }
+
+            log.info("✅ AI 简历解析成功:");
+            log.info("   - 技能栈：{}", skills);
+            log.info("   - 目标岗位：{}", position);
+            log.info("   - 项目经历：{}", projectExperience);
+
         } catch (Exception e) {
-            log.warn("AI 提取技能 JSON 解析失败: {}", aiJson);
+            log.error("AI 提取 JSON 解析失败: {}", e.getMessage());
+            log.warn("原始 AI 返回数据：{}", aiJson);
         }
+
 
         // 4. 将简历向量化并存入 Pinecone (用户隔离 Namespace)
         String namespace = "user-resume-" + userId;
@@ -350,8 +409,11 @@ public class InterviewService {
         resume.setUserId(userId);
         resume.setResumePath(filePath.toString());
         resume.setSkills(skills);
-        resume.setExperienceYears(experienceYears);
+        resume.setProjectExperience(projectExperience);
+        resume.setPosition(position);
         resume.setUploadTime(LocalDateTime.now());
+        resume.setCreatedAt(LocalDateTime.now());
+        resume.setUpdatedAt(LocalDateTime.now());
         resumeMapper.insert(resume);
 
         return ResumeVO.builder()
@@ -359,7 +421,6 @@ public class InterviewService {
                 .userId(userId)
                 .resumePath(resume.getResumePath())
                 .skills(skills)
-                .experienceYears(experienceYears)
                 .build();
     }
 

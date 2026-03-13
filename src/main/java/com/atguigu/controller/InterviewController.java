@@ -24,9 +24,8 @@ public class InterviewController {
      */
     @Operation(summary = "开始面试")
     @PostMapping("/start")
-    public ResponseEntity<InterviewSessionVO> startInterview(@RequestBody StartInterviewDTO startInterviewDTO) {
-        InterviewSessionVO session = interviewService.startInterview(startInterviewDTO);
-        return ResponseEntity.ok(session);
+    public Flux<String> startInterview(@RequestBody StartInterviewDTO startInterviewDTO) {
+       return interviewService.startInterview(startInterviewDTO);
     }
 
     /**
@@ -40,11 +39,11 @@ public class InterviewController {
     }
 
     /**
-     * 提交答案（流式返回AI反馈）
+     * 面试对话
      */
-    @Operation(summary = "提交答案")
-    @PostMapping(value = "/answer", produces = "text/event-stream;charset=utf-8")
-    public Flux<String> submitAnswer(@RequestBody SubmitAnswerRequestDTO submitAnswerRequestDTO) {
+    @Operation(summary = "面试对话")
+    @PostMapping(value = "/chat", produces = "text/event-stream;charset=utf-8")
+    public Flux<String> chat(@RequestBody SubmitAnswerRequestDTO submitAnswerRequestDTO) {
         return interviewService.submitAnswer(submitAnswerRequestDTO);
     }
 

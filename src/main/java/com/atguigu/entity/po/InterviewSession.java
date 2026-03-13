@@ -14,6 +14,7 @@ public class InterviewSession {
     private Long id;
     private String sessionId;
     private String userId;
+    private String skills;
     private String position;
     private String difficulty;
     private String status;

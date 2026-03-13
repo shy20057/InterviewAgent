@@ -26,9 +26,10 @@ public class InterviewContentRetriever {
     @Autowired
     private EmbeddingStoreProvider embeddingStoreProvider;
 
-    public List<Content> retrieveForInterview(
+    public List<Content> retrieve4Answer(
             String answer,
             String position,
+            List<String> skills,
             String difficulty,
             String userId) {
 
@@ -91,6 +92,38 @@ public class InterviewContentRetriever {
             log.error("检索失败", e);
             return new ArrayList<>();
         }
+    }
+
+    /*查技术栈 项目经历相关知识库*/
+    public List<Content> retrieve4InitQuestion(
+            String position,
+            List<String> skills,
+            String projectExperience,
+            String difficulty,
+            String userId){
+
+        Embedding contentEmbedding = embeddingModel.embed(projectExperience).content();
+        String officialNamespace = getNamespaceByPosition(position);
+        EmbeddingStore<TextSegment> officialStore = embeddingStoreProvider.getStoreByNamespace(officialNamespace);
+        EmbeddingSearchRequest officialRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(contentEmbedding)
+                .maxResults(8)
+                .minScore(0.7)
+                .filter(MetadataFilterBuilder.metadataKey("type").isEqualTo("official")
+                        .and(MetadataFilterBuilder.metadataKey("skill").isIn(skills))
+                )
+                .build();
+
+        EmbeddingSearchResult<TextSegment> officialResult = officialStore.search(officialRequest);
+        List<EmbeddingMatch<TextSegment>> officialMatches = officialResult.matches();
+
+        List<Content> contents = new ArrayList<>();
+        for (EmbeddingMatch<TextSegment> match : officialMatches) {
+            contents.add(Content.from(
+                     match.embedded().text()));
+        }
+        log.info("检索完成：官方题库 {} 条", officialMatches.size());
+        return contents;
     }
 
     private String getNamespaceByPosition(String position) {

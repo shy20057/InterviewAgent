@@ -13,9 +13,11 @@ public class UserResume {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String userId;
-    private String resumePath;
     private String skills;
-    private Integer experienceYears;
-    private String expectedPosition;
+    private String position;
+    private String projectExperience;
+    private String resumePath;
     private LocalDateTime uploadTime;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
