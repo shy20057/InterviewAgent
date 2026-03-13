@@ -6,6 +6,7 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
+import dev.langchain4j.data.document.splitter.DocumentByParagraphSplitter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -40,6 +41,20 @@ public class QuestionDataLoader {
 
     @Value("${interview.questions.auto-load:false}")
     private boolean autoLoad;
+
+    // 向量数据库 index -> namespace -> vector + metadata
+    // 存储的数据结构
+   /* {
+        "id": "uuid-12345",           // 唯一标识
+        "vector": [0.1, -0.5, 0.3...], // 1536 维向量
+        "metadata": {
+        "category": "java-basic",     // 分类：Java 基础
+        "difficulty": "easy",         // 难度：简单
+        "source": "Java 基础.pdf",     // 来源文件
+        "type": "official"            // 类型：官方题库
+      },
+        "text": "Java 的特点有哪些？..."  // 原始文本（TextSegment）
+      }*/
 
     @PostConstruct
     public void initOfficialQuestions() {
@@ -106,6 +121,7 @@ public class QuestionDataLoader {
                 return;
             }
 
+            // 根据namespace获取向量存储空间
             EmbeddingStore<TextSegment> storeForNamespace = embeddingStoreProvider.getStoreByNamespace(namespace);
 
             File[] files = path.toFile().listFiles((dir, name) -> name.endsWith(".pdf"));
@@ -154,32 +170,71 @@ public class QuestionDataLoader {
                                       String difficulty) {
         try {
             log.info("正在加载：{}，分类：{}，难度：{}", pdfPath, category, difficulty);
-            
+
             Document document = FileSystemDocumentLoader.loadDocument(pdfPath, new ApachePdfBoxDocumentParser());
             
-            DocumentSplitter splitter = new dev.langchain4j.data.document.splitter.DocumentByParagraphSplitter(300, 30);
-            List<TextSegment> segments = splitter.split(document);
+            // 文本预处理：清洗无关信息
+            String originalText = document.text();
+            String cleanedText = cleanText(originalText);
             
+            // 使用清洗后的文本创建新文档进行分割
+            Document cleanedDocument = Document.from(cleanedText, document.metadata());
+            
+            // 优化分割参数：1500 字符上限，200 字符重叠
+            DocumentSplitter splitter = new DocumentByParagraphSplitter(1500, 200);
+            List<TextSegment> segments = splitter.split(cleanedDocument);
+
             int count = 0;
+            String fileName = new File(pdfPath).getName();
+
+            // 抽样打印预览，用于验证分割效果
+            if (!segments.isEmpty()) {
+                String preview = segments.get(0).text();
+                if (preview.length() > 200) preview = preview.substring(0, 200) + "...";
+                log.info("文件 {} 分割完成，共 {} 个片段。初步预览第一个片段内容：\n---[START]---\n{}\n---[END]---", 
+                        fileName, segments.size(), preview);
+            }
+
             for (TextSegment segment : segments) {
                 Map<String, Object> metadataMap = new HashMap<>();
                 metadataMap.put("category", category);
-                metadataMap.put("difficulty", difficulty);
-                metadataMap.put("source", new File(pdfPath).getName());
+                // metadataMap.put("difficulty", difficulty);
+                metadataMap.put("source", fileName);
                 metadataMap.put("type", "official");
 
                 Metadata metadata = Metadata.from(metadataMap);
                 TextSegment enrichedSegment = TextSegment.from(segment.text(), metadata);
+
                 Response<Embedding> response = embeddingModel.embed(enrichedSegment);
                 store.add(response.content(), enrichedSegment);
-                
+
                 count++;
             }
-            
+
             log.info("成功加载 {} 道题到 namespace: {}", count, namespace);
-            
+
         } catch (Exception e) {
             log.error("加载 PDF 失败：{}", pdfPath, e);
         }
+    }
+
+    /**
+     * 清洗文本，去除无用的页眉页脚和推广信息
+     */
+    private String cleanText(String text) {
+        if (text == null) return "";
+
+        // 1. 去除面试鸭相关的页眉页脚和推广链接
+        String cleaned = text.replaceAll("mianshiya\\.com", "");
+        cleaned = cleaned.replaceAll("https?://(www\\.)?mianshiya\\.com[^\\s]*", "");
+        cleaned = cleaned.replaceAll("本资源来自面试鸭：[^\\n]*", "");
+
+        // 2. 去除“推荐更多免费学编程资源”及其列表内容
+        cleaned = cleaned.replaceAll("推荐更多免费学编程资源：[\\s\\S]*?随时随地提升面试能力", "");
+
+        // 3. 去除 PDF 解析可能产生的连续空行
+        cleaned = cleaned.replaceAll("\\n{3,}", "\n\n");
+
+        return cleaned.trim();
     }
 }

@@ -22,6 +22,8 @@ public class LLMTest {
     @Autowired
     private QwenChatModel qwenChatModel;
 
+
+
     @Test
     public void testChat(){
         String answer = OpenAiChatModel.chat("你是谁");

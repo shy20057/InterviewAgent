@@ -46,9 +46,8 @@ public class InterviewContentRetriever {
             EmbeddingSearchRequest officialRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(answerEmbedding)
                     .maxResults(5)
-                    .minScore(0.7) // TODO 优化大模型从向量数据库中按难度/岗位选题
-                    .filter(MetadataFilterBuilder.metadataKey("difficulty").isEqualTo(difficulty)
-                            .and(MetadataFilterBuilder.metadataKey("type").isEqualTo("official")))
+                    .minScore(0.6)
+                    .filter(MetadataFilterBuilder.metadataKey("type").isEqualTo("official"))
                     .build();
 
             EmbeddingSearchResult<TextSegment> officialResult = officialStore.search(officialRequest);
@@ -96,11 +95,11 @@ public class InterviewContentRetriever {
 
     private String getNamespaceByPosition(String position) {
         switch (position) {
-            case "java-backend":
+            case "后端":
                 return "official-java-backend";
-            case "frontend":
+            case "前端":
                 return "official-frontend";
-            case "fullstack":
+            case "全栈":
             default:
                 return "official-java-backend";
         }

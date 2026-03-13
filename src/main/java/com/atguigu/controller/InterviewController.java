@@ -48,15 +48,15 @@ public class InterviewController {
         return interviewService.submitAnswer(submitAnswerRequestDTO);
     }
 
-    /**
-     * 获取面试评估结果
-     */
-    @Operation(summary = "获取面试结果")
-    @GetMapping("/result/{sessionId}")
-    public ResponseEntity<InterviewResultVO> getResult(@PathVariable("sessionId") String sessionId) {
-        InterviewResultVO result = interviewService.getResult(sessionId);
-        return ResponseEntity.ok(result);
-    }
+//    /**
+//     * 获取面试评估结果
+//     */
+//    @Operation(summary = "获取面试结果")
+//    @GetMapping("/result/{sessionId}")
+//    public ResponseEntity<InterviewResultVO> getResult(@PathVariable("sessionId") String sessionId) {
+//        InterviewResultVO result = interviewService.getResult(sessionId);
+//        return ResponseEntity.ok(result);
+//    }
 
     /**
      * 上传并解析简历
