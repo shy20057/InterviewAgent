@@ -1,13 +1,12 @@
 package com.atguigu.service;
 
-import com.atguigu.assistant.EvaluationAgent;
+import com.atguigu.assistant.ExtractSkillsAgent;
 import com.atguigu.assistant.InterviewAgent;
 import com.atguigu.entity.dto.StartInterviewDTO;
 import com.atguigu.entity.dto.SubmitAnswerRequestDTO;
 import com.atguigu.entity.po.InterviewQuestion;
 import com.atguigu.entity.po.InterviewSession;
 import com.atguigu.entity.po.UserResume;
-import com.atguigu.entity.vo.QuestionVO;
 import com.atguigu.entity.vo.ResumeVO;
 import com.atguigu.mapper.InterviewQuestionMapper;
 import com.atguigu.mapper.InterviewSessionMapper;
@@ -37,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SignalType;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,9 +61,9 @@ public class InterviewService {
 
     @Autowired
     private InterviewAgent interviewAgent;
-
     @Autowired
-    private EvaluationAgent evaluationAgent;
+    private ExtractSkillsAgent extractSkillsAgent;
+
 
     @Autowired
     private InterviewContentRetriever contentRetriever;
@@ -97,24 +97,6 @@ public class InterviewService {
 
         String sessionId = UUID.randomUUID().toString();
 
-        // 创建面试会话实体
-        InterviewSession session = new InterviewSession();
-        session.setSessionId(sessionId);
-        session.setUserId(startInterviewDTO.getUserId() != null ? startInterviewDTO.getUserId() : "default");
-        session.setPosition(startInterviewDTO.getPosition() != null ? startInterviewDTO.getPosition() : "java-backend");
-        session.setDifficulty(startInterviewDTO.getDifficulty() != null ? startInterviewDTO.getDifficulty() : "medium");
-        session.setSkills(startInterviewDTO.getUserSkills() != null ? startInterviewDTO.getUserSkills() : "");
-        session.setStatus("ongoing");
-        session.setTotalQuestions(0);
-        session.setAnsweredCount(0);
-        session.setScore(0.0);
-        session.setStartTime(LocalDateTime.now());
-
-        // 持久化到数据库
-        sessionMapper.insertOrUpdate(session);
-        log.info("面试会话已创建: sessionId={}, position={}, difficulty={}",
-                sessionId, session.getPosition(), session.getDifficulty());
-
         UserResume userResume = resumeMapper.selectOne(new LambdaQueryWrapper<UserResume>()
                 .eq(UserResume::getUserId, startInterviewDTO.getUserId()));
 
@@ -128,6 +110,24 @@ public class InterviewService {
             projectExperience = "";
         }
 
+        // 创建面试会话实体
+        InterviewSession session = new InterviewSession();
+        session.setSessionId(sessionId);
+        session.setUserId(userResume.getUserId());
+        session.setPosition(position);
+        session.setDifficulty(startInterviewDTO.getDifficulty());
+        session.setSkills(skillsList.toString());
+        session.setStatus("ongoing");
+        session.setTotalQuestions(0);
+        session.setAnsweredCount(0);
+        session.setScore(0.0);
+        session.setStartTime(LocalDateTime.now());
+
+        // 持久化到数据库
+        sessionMapper.insertOrUpdate(session);
+        log.info("面试会话已创建: sessionId={}, position={}, difficulty={}",
+                sessionId, session.getPosition(), session.getDifficulty());
+
         // 根据用户岗位 技术栈检索知识库 获取题库
         List<Content> retrievedContentsList = contentRetriever
                 .retrieve4InitQuestion(position, skillsList, projectExperience, startInterviewDTO.getDifficulty(), session.getUserId());
@@ -138,7 +138,7 @@ public class InterviewService {
                 .collect(Collectors.joining("\n---\n"));
 
 
-        return interviewAgent.interview(
+        return interviewAgent.interviewInit(
                 sessionId,
                 "你好",
                 position,
@@ -149,40 +149,10 @@ public class InterviewService {
         );
     }
 
-    /**
-     * 获取面试问题
-     */
-    public QuestionVO getQuestion(String sessionId) {
-        InterviewSession session = getSession(sessionId);
-        if (session == null) {
-            return QuestionVO.builder()
-                    .sessionId(sessionId)
-                    .question("会话不存在，请先开始面试")
-                    .build();
-        }
 
-        int nextQuestionNumber = session.getTotalQuestions() + 1;
-
-        // 如果是第一个问题，生成自我介绍引导语
-        String question;
-        if (nextQuestionNumber == 1) {
-            question = "你好！我是你的面试官，请简单介绍一下你自己。";
-        } else {
-            // TODO 查询知识库提问
-            question = "请继续回答下一个问题（由AI面试官根据你的表现动态生成）";
-        }
-
-        return QuestionVO.builder()
-                .sessionId(sessionId)
-                .questionNumber(nextQuestionNumber)
-                .question(question)
-                .category(session.getPosition())
-                .difficulty(session.getDifficulty())
-                .build();
-    }
 
     /**
-     * 提交答案并获取AI反馈（流式）
+     * 提交答案并获取AI反馈提问
      */
     @Transactional(rollbackFor = Exception.class)
     public Flux<String> submitAnswer(SubmitAnswerRequestDTO submitAnswerRequestDTO) {
@@ -191,11 +161,11 @@ public class InterviewService {
             return Flux.just("会话不存在，请先调用 /api/interview/start 开始面试");
         }
 
-
+        List<String> skillsList = Arrays.asList(session.getSkills().split(","));
         // ================= RAG 检索 ====================
-        // 根据用户的回答检索知识库
+        // 根据用户的回答检索题库 和 简历
        List<Content> retrievedContentsList = contentRetriever
-                .retrieve4Answer(submitAnswerRequestDTO.getAnswer(),session.getUserId());
+                .retrieve4Answer(submitAnswerRequestDTO.getAnswer(),session.getPosition(),skillsList,session.getDifficulty(),session.getUserId());
 
         // 提取片段中的纯文本，并进行拼接
         String retrievedContents = retrievedContentsList.stream()
@@ -204,12 +174,11 @@ public class InterviewService {
                 .collect(Collectors.joining("\n---\n"));
         // ==============================================================
 
-        String resumeContent = "项目经历：个性推荐电商";
+
         // 1. 记录用户答案到数据库
         InterviewQuestion questionRecord = InterviewQuestion.builder()
                 .sessionId(submitAnswerRequestDTO.getSessionId())
-                .category(session.getPosition())
-                .difficulty(session.getDifficulty())
+                .category(session.getSkills())
                 .userAnswer(submitAnswerRequestDTO.getAnswer())
                 .answerTime(LocalDateTime.now())
                 .build();
@@ -217,13 +186,9 @@ public class InterviewService {
 
         // 2. 调用面试智能体 (负责对话)
         Flux<String> interviewerFlow = interviewAgent.interview(
-                submitAnswerRequestDTO.getSessionId(),
-                submitAnswerRequestDTO.getAnswer(),
-                position,
-                difficulty,
-                skills != null ? skills : "Java, Spring, MySQL",
-                retrievedContents,
-                resumeContent
+             submitAnswerRequestDTO.getSessionId(),
+             submitAnswerRequestDTO.getAnswer(),
+             retrievedContents
         );
 
         // 3. 背景处理：在流结束后静默执行评估
@@ -232,19 +197,17 @@ public class InterviewService {
         return interviewerFlow
                 .doOnNext(interviewerSpeech::append)
                 .doFinally(signalType -> {
-                    if (reactor.core.publisher.SignalType.ON_COMPLETE.equals(signalType)) {
+                    if (SignalType.ON_COMPLETE.equals(signalType)) {
                         // 异步执行评估，不阻塞主流程返回，且前端不可见
                         CompletableFuture.runAsync(() -> {
                             try {
                                 log.info("开始后台评估 [Session: {}]", submitAnswerRequestDTO.getSessionId());
-                                String evalResult = evaluationAgent.evaluate(
+                                String evalResult = interviewAgent.evaluate(
                                         submitAnswerRequestDTO.getSessionId(),
                                         submitAnswerRequestDTO.getAnswer(),
-                                        position,
                                         retrievedContents
                                 );
-                                // 保存完整的面试官回复
-                                questionRecord.setAgentQuestion(interviewerSpeech.toString());
+
                                 // 解析并保存评估得分
                                 extractAndSaveScores(evalResult, questionRecord.getId());
                             } catch (Exception e) {
@@ -315,7 +278,7 @@ public class InterviewService {
             Files.createDirectories(storagePath);
         }
         Path filePath = storagePath.resolve(fileName);
-        file.transferTo(filePath.toFile());
+        file.transferTo(filePath.toFile()); // 将文件file复制到filePath.toFile()中去
 
         // 2. 根据文件类型解析文本
         String fullText = "";
@@ -344,7 +307,7 @@ public class InterviewService {
         }
 
         // 3. 利用 AI 提取技能和年限
-        String aiJson = interviewAgent.extractSkills(fullText);
+        String aiJson = extractSkillsAgent.extractSkills(fullText);
 
         // ==================== JSON 解析和信息提取 ====================
         String skills = "未识别到核心技能";
@@ -421,6 +384,8 @@ public class InterviewService {
                 .userId(userId)
                 .resumePath(resume.getResumePath())
                 .skills(skills)
+                .projectExperience(projectExperience)
+                .position(position)
                 .build();
     }
 
@@ -484,37 +449,4 @@ public class InterviewService {
         return sessionMapper.selectOne(wrapper);
     }
 
-    /**
-     * 获取岗位中文名称
-     */
-    private String getPositionName(String position) {
-        switch (position) {
-            case "java-backend":
-                return "Java后端开发";
-            case "frontend":
-                return "前端开发";
-            case "fullstack":
-                return "全栈开发";
-            default:
-                return position;
-        }
-    }
-
-    /**
-     * 根据分数生成评估文本
-     */
-    private String generateEvaluation(double score, int questionCount) {
-        if (questionCount == 0) {
-            return "您还没有回答任何问题，无法给出评估。";
-        }
-        if (score >= 90) {
-            return "表现优秀！基础知识扎实，思路清晰，建议继续深化高级话题。🌟";
-        } else if (score >= 75) {
-            return "表现良好！基础知识掌握较好，建议加强系统设计和场景分析能力。💪";
-        } else if (score >= 60) {
-            return "表现一般，部分知识点需要加强。建议多做练习，查漏补缺。📚";
-        } else {
-            return "需要加强学习，基础知识还有较大提升空间。建议系统化学习后再来挑战。📖";
-        }
-    }
 }

@@ -17,7 +17,8 @@ public class ResumeVO {
     private Long id;
     private String userId;
     private String resumePath;
-    private String skills;      // 提取出的技能
-    private Integer experienceYears;
-    private String expectedPosition;
+    private String skills;
+    private String projectExperience;
+    private String position;
+
 }

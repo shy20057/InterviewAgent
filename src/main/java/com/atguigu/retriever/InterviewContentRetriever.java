@@ -26,6 +26,7 @@ public class InterviewContentRetriever {
     @Autowired
     private EmbeddingStoreProvider embeddingStoreProvider;
 
+    /*根据用户的回答来查询 简历 题库相关内容，用于第二，三阶段*/
     public List<Content> retrieve4Answer(
             String answer,
             String position,
@@ -38,17 +39,17 @@ public class InterviewContentRetriever {
             // ===================1.根据用户的答案检索的知识点==========================//
             Embedding answerEmbedding = embeddingModel.embed(answer).content();
 
-            String officialNamespace = getNamespaceByPosition(position);
 
             // 获取官方题库向量数据的namespace
-            EmbeddingStore<TextSegment> officialStore = embeddingStoreProvider.getStoreByNamespace(officialNamespace);
+            EmbeddingStore<TextSegment> officialStore = embeddingStoreProvider.getStoreByNamespace(position);
 
             // 官方题库检索
             EmbeddingSearchRequest officialRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(answerEmbedding)
-                    .maxResults(5)
-                    .minScore(0.6)
-                    .filter(MetadataFilterBuilder.metadataKey("type").isEqualTo("official"))
+                    .maxResults(3) // 最多拿 3 题库
+                    .minScore(0.7)
+                    .filter(MetadataFilterBuilder.metadataKey("type").isEqualTo("official")
+                            .and(MetadataFilterBuilder.metadataKey("category").isIn(skills)))
                     .build();
 
             EmbeddingSearchResult<TextSegment> officialResult = officialStore.search(officialRequest);
@@ -76,12 +77,12 @@ public class InterviewContentRetriever {
 
             for (EmbeddingMatch<TextSegment> match : officialMatches) {
                 contents.add(Content.from(
-                        "[知识点] " + match.embedded().text()));
+                        "[题库相关知识] " + match.embedded().text()));
             }
 
             for (EmbeddingMatch<TextSegment> match : resumeMatches) {
                 contents.add(Content.from(
-                        "[简历相关] " + match.embedded().text()));
+                        "[简历相关内容] " + match.embedded().text()));
             }
 
             log.info("检索完成：官方题库 {} 条，用户简历 {} 条", officialMatches.size(), resumeMatches.size());
@@ -94,7 +95,7 @@ public class InterviewContentRetriever {
         }
     }
 
-    /*查技术栈 项目经历相关知识库*/
+    /*查项目经历相关知识库 用于第二个阶段*/
     public List<Content> retrieve4InitQuestion(
             String position,
             List<String> skills,
@@ -103,14 +104,13 @@ public class InterviewContentRetriever {
             String userId){
 
         Embedding contentEmbedding = embeddingModel.embed(projectExperience).content();
-        String officialNamespace = getNamespaceByPosition(position);
-        EmbeddingStore<TextSegment> officialStore = embeddingStoreProvider.getStoreByNamespace(officialNamespace);
+        EmbeddingStore<TextSegment> officialStore = embeddingStoreProvider.getStoreByNamespace(position);
         EmbeddingSearchRequest officialRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(contentEmbedding)
-                .maxResults(8)
+                .maxResults(3)
                 .minScore(0.7)
                 .filter(MetadataFilterBuilder.metadataKey("type").isEqualTo("official")
-                        .and(MetadataFilterBuilder.metadataKey("skill").isIn(skills))
+                        .and(MetadataFilterBuilder.metadataKey("category").isIn(skills))
                 )
                 .build();
 
@@ -126,16 +126,6 @@ public class InterviewContentRetriever {
         return contents;
     }
 
-    private String getNamespaceByPosition(String position) {
-        switch (position) {
-            case "后端":
-                return "official-java-backend";
-            case "前端":
-                return "official-frontend";
-            case "全栈":
-            default:
-                return "official-java-backend";
-        }
-    }
+
 
 }

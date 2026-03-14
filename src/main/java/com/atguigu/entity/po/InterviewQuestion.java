@@ -32,6 +32,7 @@ public class InterviewQuestion {
      */
     private String sessionId;
 
+
     /**
      * AI生成的原问题内容
      */
@@ -47,10 +48,6 @@ public class InterviewQuestion {
      */
     private String category;
 
-    /**
-     * 问题当前难度
-     */
-    private String difficulty;
 
     /**
      * 技术正确性评分

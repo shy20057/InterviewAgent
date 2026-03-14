@@ -28,15 +28,7 @@ public class InterviewController {
        return interviewService.startInterview(startInterviewDTO);
     }
 
-    /**
-     * 获取面试问题
-     */
-    @Operation(summary = "获取面试问题")
-    @GetMapping("/question")
-    public ResponseEntity<QuestionVO> getQuestion(@RequestParam("sessionId") String sessionId) {
-        QuestionVO question = interviewService.getQuestion(sessionId);
-        return ResponseEntity.ok(question);
-    }
+
 
     /**
      * 面试对话
